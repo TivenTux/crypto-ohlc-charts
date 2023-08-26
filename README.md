@@ -1,6 +1,8 @@
 ## Crypto OHLC charts
 Discord bot that generates crypto OHLC charts (Open, High, Low, Closing), using plotly and coingecko.
 
+![](https://github.com/TivenTux/crypto-ohlc-charts/blob/main/demo.gif)
+
 ## Environment Variables
 
 **discord_token** - your discord bot token (https://discord.com/developers/applications) <br>
