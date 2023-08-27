@@ -184,7 +184,8 @@ def generate_ohlc_data(jsondata):
 
 def process_image(chart_filepath):
     '''
-    Takes chart filepath and processes the image file
+    Takes chart filepath, processes the image file.
+    Returns chart_filepath if succesfull.
     '''
     try:
         img = Image.open(chart_filepath)
@@ -235,7 +236,7 @@ async def on_ready():
 @client.event
 async def on_message(message):
     '''
-    Processes messages. Needs message_content intent enabled on discord bot management.
+    Processes messages and commands.
     '''
     rmsg = message.content
     rmsg2 = rmsg.upper()
