@@ -124,6 +124,107 @@ def validate_currency(currency):
         return 1
     return 0
 
+def generate_filepath(ticker, userid, message_chan_id, epoch_time_data):
+    '''
+    Takes ticker, userid, message_channel_id, epoch_time and returns file path.
+    '''
+    try:
+        chart_name = "c_" + ticker + '_' + str(userid)[-2:] + str(randrange(884)) + str(message_chan_id)[-3:] + str(epoch_time_data)[-4:] +  ".png"
+        chart_name_final = chart_name.replace('/','')
+        chart_filepath = chart_dir + chart_name_final
+    except Exception as e:
+        return 0
+    return chart_filepath
+
+def generate_ohlc_data(jsondata):
+    '''
+    Takes json data and returns OHLC data for plotly
+    '''
+    try:
+        i = 0
+        ohlc_date = []
+        ohlc_open = []
+        ohlc_high = []
+        ohlc_low = []
+        ohlc_close = []
+        while i < len(jsondata):
+            data_open = jsondata[i][1]
+            data_high = jsondata[i][2]
+            data_low = jsondata[i][3]
+            data_close = jsondata[i][4]
+            epochconverted = datetime.datetime.fromtimestamp(jsondata[i][0]/1000).strftime('%Y-%m-%d %H:%M:%S')
+            ohlc_date.append(epochconverted)
+            #print(jsondata[i])
+            if 'e' in str(data_open):
+                data_open = str("%.17f" % jsondata[i][1]).rstrip('0').rstrip('.')
+                #print(data_open)
+                ohlc_open.append(data_open)
+            else:
+                ohlc_open.append(jsondata[i][1])
+            if 'e' in str(data_high):
+                data_high = str("%.17f" % jsondata[i][2]).rstrip('0').rstrip('.')
+                ohlc_high.append(data_high)
+            else:
+                ohlc_high.append(jsondata[i][2])
+            if 'e' in str(data_low):
+                data_low = str("%.17f" % jsondata[i][3]).rstrip('0').rstrip('.')
+                ohlc_low.append(data_low)
+            else:
+                ohlc_low.append(jsondata[i][3])
+            if 'e' in str(data_close):
+                data_close = str("%.17f" % jsondata[i][4]).rstrip('0').rstrip('.')
+                ohlc_close.append(data_close)
+            else:
+                ohlc_close.append(jsondata[i][4])
+            i += 1
+    except Exception as e:
+        print(e, 'ohlc data processing error')
+        return 0
+    return ohlc_date, ohlc_open, ohlc_high, ohlc_low, ohlc_close
+
+def process_image(chart_filepath):
+    '''
+    Takes chart filepath and processes the image file
+    '''
+    try:
+        img = Image.open(chart_filepath)
+        border = (0, 90, 50, 45) # left, top, right, bottom
+        dimg = ImageOps.crop(img, border)
+        dimg.save(chart_filepath)
+    except Exception as e:
+        print(e, ' error processing chart image file')
+        return 0
+    return chart_filepath
+
+def generate_chart(ohlc_date, ohlc_open, ohlc_high, ohlc_low, ohlc_close, ticker, currency, chart_color, chart_filepath):
+    '''
+    Takes ohlc data, options and filepath and generates candlestick chart.
+    Returns 1 on success.
+    '''
+    try:
+        fig = go.Figure(data=go.Candlestick(x=ohlc_date,
+                        open=ohlc_open,
+                        high=ohlc_high,
+                        low=ohlc_low,
+                        close=ohlc_close))
+        fig.update_yaxes(anchor='free')
+        fig.update(layout_xaxis_rangeslider_visible=False)
+        fig.update_xaxes(ticks="outside", tickwidth=2, ticklen=7)
+        fig.update_layout(yaxis = dict(exponentformat = 'none'))
+        y_axis_title = ticker + ' / ' + str(currency.upper())
+        if chart_color == 'black':
+            fig.update_layout(font_size=16, font_family="Arial", font_color="white", title_font_size=20, title_font_family="Arial", title_font_color="white")
+            fig.update_layout(paper_bgcolor='rgb(0,0,0)', plot_bgcolor='rgb(0,0,0)', xaxis= dict(showgrid=False), yaxis= dict(showgrid=False))
+        if chart_color == 'white':
+            fig.update_layout(font_size=16, font_family="Arial", font_color="black", title_font_size=20, title_font_family="Arial", title_font_color="black")
+            fig.update_layout(paper_bgcolor='rgb(255,255,255)', plot_bgcolor='rgb(255,255,255)', xaxis= dict(showgrid=False), yaxis= dict(showgrid=False))
+        fig.update_yaxes(title_text=y_axis_title, position=0, ticks="outside", tickwidth=2, ticklen=10)
+        fig.write_image(chart_filepath)
+    except Exception as e:
+        print(e, 'error during chart generation')
+        return 0
+    return 1
+
 @client.event
 async def on_ready():
     '''
@@ -193,69 +294,20 @@ async def on_message(message):
                     asyncio.ensure_future(notification_handler(channel, " ", fieldname, 'Please try again.'))
 
             if result == 'crypto':
-                chart_name = "c_" + ticker + '_' + str(userid)[-2:] + str(randrange(884)) + str(message.channel.id)[-3:] + str(epoch_time)[-4:] +  ".png"
-                chart_name2 = chart_name.replace('/','')
-                chart_filepath = chart_dir + chart_name2
-
-                i = 0
-                ohlc_date = []
-                ohlc_open = []
-                ohlc_high = []
-                ohlc_low = []
-                ohlc_close = []
-                while i < len(jsondata):
-                    data_open = jsondata[i][1]
-                    data_high = jsondata[i][2]
-                    data_low = jsondata[i][3]
-                    data_close = jsondata[i][4]
-                    epochconverted = datetime.datetime.fromtimestamp(jsondata[i][0]/1000).strftime('%Y-%m-%d %H:%M:%S')
-                    ohlc_date.append(epochconverted)
-                    #print(jsondata[i])
-                    if 'e' in str(data_open):
-                        data_open = str("%.17f" % jsondata[i][1]).rstrip('0').rstrip('.')
-                        #print(data_open)
-                        ohlc_open.append(data_open)
-                    else:
-                        ohlc_open.append(jsondata[i][1])
-                    if 'e' in str(data_high):
-                        data_high = str("%.17f" % jsondata[i][2]).rstrip('0').rstrip('.')
-                        ohlc_high.append(data_high)
-                    else:
-                        ohlc_high.append(jsondata[i][2])
-                    if 'e' in str(data_low):
-                        data_low = str("%.17f" % jsondata[i][3]).rstrip('0').rstrip('.')
-                        ohlc_low.append(data_low)
-                    else:
-                        ohlc_low.append(jsondata[i][3])
-                    if 'e' in str(data_close):
-                        data_close = str("%.17f" % jsondata[i][4]).rstrip('0').rstrip('.')
-                        ohlc_close.append(data_close)
-                    else:
-                        ohlc_close.append(jsondata[i][4])
-                    i += 1
-                #print(ohlc_open)
-                fig = go.Figure(data=go.Candlestick(x=ohlc_date,
-                                open=ohlc_open,
-                                high=ohlc_high,
-                                low=ohlc_low,
-                                close=ohlc_close))
-                fig.update_yaxes(anchor='free')
-                fig.update(layout_xaxis_rangeslider_visible=False)
-                fig.update_xaxes(ticks="outside", tickwidth=2, ticklen=7)
-                fig.update_layout(yaxis = dict(exponentformat = 'none'))
-                y_axis_title = tickerfinal + ' / ' + str(default_currency.upper())
-                if chartcolor == 'black':
-                    fig.update_layout(font_size=16, font_family="Arial", font_color="white", title_font_size=20, title_font_family="Arial", title_font_color="white")
-                    fig.update_layout(paper_bgcolor='rgb(0,0,0)', plot_bgcolor='rgb(0,0,0)', xaxis= dict(showgrid=False), yaxis= dict(showgrid=False))
-                if chartcolor == 'white':
-                    fig.update_layout(font_size=16, font_family="Arial", font_color="black", title_font_size=20, title_font_family="Arial", title_font_color="black")
-                    fig.update_layout(paper_bgcolor='rgb(255,255,255)', plot_bgcolor='rgb(255,255,255)', xaxis= dict(showgrid=False), yaxis= dict(showgrid=False))
-                fig.update_yaxes(title_text=y_axis_title, position=0, ticks="outside", tickwidth=2, ticklen=10)
-                fig.write_image(chart_filepath)
-                img = Image.open(chart_filepath)
-                border = (0, 90, 50, 45) # left, top, right, bottom
-                dimg = ImageOps.crop(img, border)
-                dimg.save(chart_filepath)
+                chart_filepath = generate_filepath(ticker, userid, message.channel.id, epoch_time)
+                ohlc_date, ohlc_open, ohlc_high, ohlc_low, ohlc_close = generate_ohlc_data(jsondata)
+                chart_status = generate_chart(ohlc_date, ohlc_open, ohlc_high, ohlc_low, ohlc_close, tickerfinal, default_currency, chartcolor, chart_filepath)
+                if chart_status == 1:
+                    pass
+                else:
+                    print('chart generation error')
+                    return  
+                edit_image = process_image(chart_filepath)
+                if edit_image != 0:
+                    print('saving chart file ' + chart_filepath)
+                else:
+                    print('error during image crop')
+                    return
 
         if alerthandled == 'yes':
             print('sent alert already, pass')
