@@ -77,10 +77,24 @@ def remove_chart_file(file):
     try:
         command1 = subprocess.run(f'rm {file}', capture_output=True, text=True, shell=True, check=False).stdout
         print(command1)
+        file_check = check_for_file(file)
+        if file_check == 1:
+            print('could not delete file ' + file)
+            return 0
+        else:
+            return 1
     except Exception as e:
         print(e)
         return 0
-    return 1
+
+def check_for_file(file):
+    '''
+    Takes filepath, returns 1 if file exists.
+    '''     
+    if os.path.isfile(file) is True:
+        return 1
+    else:
+        return 0
 
 def get_coingecko(ticker, currency):
     '''
@@ -255,6 +269,5 @@ def Main():
     Starts discord loop
     '''
     client.run(discord_token)
-
 if __name__ == "__main__":
     Main()
